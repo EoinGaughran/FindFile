@@ -10,8 +10,13 @@ public class findFileGui extends JFrame{
 
     private int filesCheckedNumber = 0;
     private int filesFoundNumber = 0;
+    private int xSize = 800;
+    private int ySize = 500;
+
     private JLabel filesChecked;
     private JLabel filesFound;
+    private JTextField tf;
+    private JTextArea display;
 
     private String [] drives;
 
@@ -21,12 +26,6 @@ public class findFileGui extends JFrame{
 
         new findFileGui();
     }
-
-    private int xSize = 800;
-    private int ySize = 500;
-
-    private JTextField tf;
-    private JTextArea display;
 
     private findFileGui(){
 
