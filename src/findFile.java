@@ -47,7 +47,7 @@ public class findFile {
                         String fileName = listOfFile.getName();
                         if (listOfFile.isFile()) {
 
-                            if (fileName.toLowerCase().contains("pawg")) {
+                            if (fileName.toLowerCase().contains("history") && fileName.toLowerCase().contains("american") && fileName.toLowerCase().contains("x")) {
 
                                 System.out.println("\r\n"+listOfFile);
                                 filesFound++;

@@ -8,8 +8,8 @@ import java.util.List;
 
 public class findFileGui extends JFrame{
 
-    private int filesCheckedNumber = 0;
-    private int filesFoundNumber = 0;
+    private long filesCheckedNumber = 0;
+    private long filesFoundNumber = 0;
     private int xSize = 800;
     private int ySize = 500;
 
@@ -19,6 +19,8 @@ public class findFileGui extends JFrame{
     private JTextArea display;
 
     private String [] drives;
+
+    private ArrayList<String> searchTerms = new ArrayList<>();
 
     private Thread worker;
 
@@ -36,7 +38,7 @@ public class findFileGui extends JFrame{
         topPanel.setBounds(8,0, xSize-50, ySize-400);
         topPanel.setLayout(null);
 
-        final JLabel enterName = new JLabel("Enter file name:");
+        final JLabel enterName = new JLabel("Search Terms:");
         enterName.setBounds(30,30, 300, 30);
         topPanel.add(enterName);
 
@@ -44,8 +46,16 @@ public class findFileGui extends JFrame{
         tf.setBounds(125, 35,150,25);
         topPanel.add(tf);
 
+        final JButton addTerms = new JButton("Add");
+        addTerms.setBounds(280, 35,56,25);
+        topPanel.add(addTerms);
+
+        JLabel terms = new JLabel("");
+        terms.setBounds(125,10, 300, 30);
+        topPanel.add(terms);
+
         final JLabel chooseDrive = new JLabel("Choose drive: ");
-        chooseDrive.setBounds(300, 30, 300, 30);
+        chooseDrive.setBounds(360, 30, 300, 30);
         topPanel.add(chooseDrive);
 
         File [] roots = File.listRoots();
@@ -72,7 +82,7 @@ public class findFileGui extends JFrame{
         }
 
         final JComboBox driveList = new JComboBox(drives);
-        driveList.setBounds(390, 30, 80, 30);
+        driveList.setBounds(450, 30, 80, 30);
         topPanel.add(driveList);
 
         final JButton b = new JButton("Search");
@@ -91,7 +101,7 @@ public class findFileGui extends JFrame{
 
         /**********************/
 
-        final JLabel credit = new JLabel("<html><div align=right width=100px>Version 0.1<br/>by Oats Gdankie</div></html>");
+        final JLabel credit = new JLabel("<html><div align=right width=100px>Version 0.2<br/>by Eoin Gaughran</div></html>");
         credit.setBounds(xSize-190, -25, 150, 100);
         topPanel.add(credit);
 
@@ -123,26 +133,68 @@ public class findFileGui extends JFrame{
         //Add Textarea in to middle panel
         middlePanel.add ( scroll );
 
+        addTerms.addActionListener(e -> {
+
+            if(!tf.getText().equals("")) {
+                searchTerms.add(tf.getText());
+
+                StringBuilder s = new StringBuilder();
+
+                for(int i = 0; i < searchTerms.size(); i++){
+
+                    s.append(searchTerms.get(i));
+                    if(i != searchTerms.size()-1)
+                        s.append(", ");
+                }
+
+                terms.setText(s.toString());
+            }
+            tf.setText("");
+
+        });
+
         b.addActionListener(e -> {
 
-            filesChecked.setVisible(true);
-            filesFound.setVisible(true);
-            pause.setEnabled(true);
-            stop.setEnabled(true);
-            restart.setEnabled(true);
-            b.setEnabled(false);
+            String currentTerms = terms.getText();
+            if(!(tf.getText().equals(""))) {
 
-            worker = new Thread(() -> {
+                searchTerms.add(tf.getText());
 
-                while(!worker.isInterrupted()) {
+                if (!currentTerms.equals(""))
+                    terms.setText(currentTerms + ", " + tf.getText());
+                else
+                    terms.setText(tf.getText());
 
-                    findFile(tf.getText(), driveList.getItemAt(driveList.getSelectedIndex()).toString());
-                }
+            }
+
+            if(!terms.getText().equals("")) {
+
+                filesChecked.setVisible(true);
+                filesFound.setVisible(true);
+                pause.setEnabled(true);
+                stop.setEnabled(true);
+                restart.setEnabled(true);
+                b.setEnabled(false);
+                addTerms.setEnabled(false);
+                driveList.setEnabled(false);
+
+
+                worker = new Thread(() -> {
+
+                    while (!worker.isInterrupted()) {
+
+                        findFile(driveList.getItemAt(driveList.getSelectedIndex()).toString());
+                    }
 
                     SwingUtilities.invokeLater(() -> display.append("\nDone!"));
 
-            });
-            worker.start();
+                });
+                worker.start();
+            }
+            else
+                display.setText("Enter a Search term");
+
+            tf.setText("");
         });
 
         stop.addActionListener(e -> worker.interrupt());
@@ -156,9 +208,10 @@ public class findFileGui extends JFrame{
         f.setResizable(false);
 
         f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+
     }
 
-    private void findFile(String param, String drive){
+    private void findFile(String drive){
 
         List<File> directories = new ArrayList<>();
         File[] listOfFiles;
@@ -167,7 +220,7 @@ public class findFileGui extends JFrame{
 
         else directories.add(new File(drive));
 
-        if (param.equals("")) display.setText("Enter a filename");
+        if (searchTerms.get(0).equals("")) display.setText("Enter a filename");
         else {
             try {
 
@@ -180,7 +233,7 @@ public class findFileGui extends JFrame{
                             if (listOfFile.isFile()) {
 
                                 String fileName = listOfFile.getName();
-                                if (fileName.toLowerCase().contains(param)) {
+                                if (searchTermMatchesFile(fileName.toLowerCase())) {
 
                                     display.append("\r\n" + listOfFile);
                                     filesFoundNumber++;
@@ -194,6 +247,8 @@ public class findFileGui extends JFrame{
                             } else if (listOfFile.isDirectory()) {
                                 //System.out.println("Found Directory");
                                 directories.add(listOfFile);
+                                if(searchTermMatchesFile(listOfFile.toString()))
+                                    display.append("\r\nDIR: " + listOfFile);
                             }
                         }
                     }
@@ -203,5 +258,17 @@ public class findFileGui extends JFrame{
                 display.append("Error: " + e);
             }
         }
+    }
+
+    private boolean searchTermMatchesFile(String mFilename){
+
+        for(String searchTerm : searchTerms) {
+
+            if (!mFilename.contains(searchTerm))
+                return false;
+
+        }
+
+        return true;
     }
 }
