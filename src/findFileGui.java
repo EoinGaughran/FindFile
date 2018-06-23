@@ -25,6 +25,7 @@ public class findFileGui extends JFrame{
     private ArrayList<String> searchTerms = new ArrayList<>();
 
     private Thread worker;
+    private mySwingWorker swingWorker;
 
     public static void main(String[] args) {
 
@@ -112,7 +113,7 @@ public class findFileGui extends JFrame{
 
         /**********************/
 
-        final JLabel credit = new JLabel("<html><div align=right width=100px>Version 0.3<br/>by Eoin Gaughran</div></html>");
+        final JLabel credit = new JLabel("<html><div align=right width=100px>Version 0.4<br/>by Eoin Gaughran</div></html>");
         credit.setBounds(xSize-190, -25, 150, 100);
         topPanel.add(credit);
 
@@ -122,7 +123,7 @@ public class findFileGui extends JFrame{
 
         final JButton pause = new JButton("Pause");
         pause.setEnabled(false);
-        middlePanel.add(pause);
+        //middlePanel.add(pause);
 
         final JButton stop = new JButton("Stop");
         stop.setEnabled(false);
@@ -155,7 +156,7 @@ public class findFileGui extends JFrame{
 
                     s.append(searchTerms.get(i));
                     if(i != searchTerms.size()-1)
-                        s.append(", ");
+                        s.append("; ");
                 }
 
                 terms.setText(s.toString());
@@ -169,6 +170,7 @@ public class findFileGui extends JFrame{
             tf.setText("");
             terms.setText("");
             searchTerms.clear();
+            display.setText("");
         });
 
         search.addActionListener(e -> {
@@ -179,7 +181,7 @@ public class findFileGui extends JFrame{
                 searchTerms.add(tf.getText());
 
                 if (!currentTerms.equals(""))
-                    terms.setText(currentTerms + ", " + tf.getText());
+                    terms.setText(currentTerms + "; " + tf.getText());
                 else
                     terms.setText(tf.getText());
 
@@ -202,7 +204,7 @@ public class findFileGui extends JFrame{
                 filesFound.setText("Files Found: 0");
                 dirsFound.setText("Folders Found: 0");
 
-                worker = new Thread(() -> {
+                /*worker = new Thread(() -> {
 
                     //while (!worker.isInterrupted()) {
 
@@ -216,7 +218,10 @@ public class findFileGui extends JFrame{
                     });
 
                 });
-                worker.start();
+                worker.start();*/
+
+                swingWorker = new mySwingWorker(driveList.getItemAt(driveList.getSelectedIndex()).toString());
+                swingWorker.execute();
             }
             else
                 display.setText("Enter a Search term");
@@ -224,7 +229,33 @@ public class findFileGui extends JFrame{
             tf.setText("");
         });
 
-        stop.addActionListener(e -> worker.interrupt());
+        stop.addActionListener(e -> swingWorker.cancel(true));
+
+        pause.addActionListener(e -> swingWorker.cancel(false));
+
+        restart.addActionListener(e -> {
+
+            swingWorker.cancel(true);
+            filesChecked.setVisible(false);
+            filesFound.setVisible(false);
+            dirsFound.setVisible(false);
+            pause.setEnabled(false);
+            stop.setEnabled(false);
+            restart.setEnabled(false);
+            search.setEnabled(true);
+            addTerms.setEnabled(true);
+            driveList.setEnabled(true);
+            clear.setEnabled(true);
+
+            searchTerms.clear();
+            display.setText("");
+            terms.setText("");
+
+            filesFoundNumber = 0;
+            filesCheckedNumber = 0;
+            dirsFoundNumner = 0;
+
+        });
 
         f.add(middlePanel);
         f.add(topPanel);
@@ -238,56 +269,85 @@ public class findFileGui extends JFrame{
 
     }
 
-    private void findFile(String drive){
+    private class mySwingWorker extends javax.swing.SwingWorker<Void, Void> {
 
-        List<File> directories = new ArrayList<>();
-        File[] listOfFiles;
+        String drive;
 
-        if(drive.equals("All")) for(String mDrive : drives) directories.add(new File(mDrive));
+        private mySwingWorker(String drive){
 
-        else directories.add(new File(drive));
+            this.drive = drive;
+        }
 
-        if (searchTerms.get(0).equals("")) display.setText("Enter a filename");
-        else {
-            try {
+        @Override
+        protected Void doInBackground() {
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                System.out.println("javax.swing.SwingUtilities.isEventDispatchThread() returned true.");
+            }
 
-                for (int i = 0; i < directories.size(); i++) {
+            List<File> directories = new ArrayList<>();
+            File[] listOfFiles;
 
-                    listOfFiles = directories.get(i).listFiles();
+            if(drive.equals("All")) for(String mDrive : drives) directories.add(new File(mDrive));
 
-                    if (listOfFiles != null) {
-                        for (File listOfFile : listOfFiles) {
-                            if (listOfFile.isFile()) {
+            else directories.add(new File(drive));
 
-                                String fileName = listOfFile.getName();
-                                if (searchTermMatchesFile(fileName.toLowerCase())) {
+            if (searchTerms.get(0).equals("")) display.setText("Enter a filename");
+            else {
+                try {
 
-                                    display.append("\r\n" + listOfFile);
-                                    filesFoundNumber++;
-                                    filesFound.setText("Files Found: " + filesFoundNumber);
+                    for (int i = 0; i < directories.size(); i++) {
+
+                        listOfFiles = directories.get(i).listFiles();
+
+                        if (listOfFiles != null) {
+                            for (File listOfFile : listOfFiles) {
+
+                                if(isCancelled()) {
+                                    directories.clear();
+                                    return null;
                                 }
 
-                                filesCheckedNumber++;
-                                //ta.append("\r\nFiles Checked: " + filesChecked + " Files Found: " + filesFound);
-                                filesChecked.setText("Files Checked: " + filesCheckedNumber);
+                                if (listOfFile.isFile()) {
 
-                            } else if (listOfFile.isDirectory()) {
-                                //System.out.println("Found Directory");
-                                directories.add(listOfFile);
-                                if(searchTermMatchesFile(listOfFile.toString())) {
-                                    display.append("\r\nFOLDER: " + listOfFile);
-                                    dirsFoundNumner++;
-                                    dirsFound.setText("Folders Found: " + dirsFoundNumner);
+                                    String fileName = listOfFile.getName();
+                                    if (searchTermMatchesFile(fileName.toLowerCase())) {
+
+                                        display.append("\r\n" + listOfFile);
+                                        filesFoundNumber++;
+                                        filesFound.setText("Files Found: " + filesFoundNumber);
+                                    }
+
+                                    filesCheckedNumber++;
+                                    //ta.append("\r\nFiles Checked: " + filesChecked + " Files Found: " + filesFound);
+                                    filesChecked.setText("Files Checked: " + filesCheckedNumber);
+
+                                } else if (listOfFile.isDirectory()) {
+                                    //System.out.println("Found Directory");
+                                    directories.add(listOfFile);
+                                    if(searchTermMatchesFile(listOfFile.toString())) {
+                                        display.append("\r\nFOLDER: " + listOfFile);
+                                        dirsFoundNumner++;
+                                        dirsFound.setText("Folders Found: " + dirsFoundNumner);
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            } catch (NullPointerException e) {
+                } catch (NullPointerException e) {
 
-                display.append("Error: " + e);
+                    display.append("Error: " + e);
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void done() {
+            if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+                System.out.println("javax.swing.SwingUtilities.isEventDispatchThread() + returned false.");
             }
         }
+
     }
 
     private boolean searchTermMatchesFile(String mFilename){
